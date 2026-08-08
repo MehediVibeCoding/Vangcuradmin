@@ -2487,11 +2487,12 @@ A: App ও Remote দিয়ে..."></textarea>
         <div style="font-size:10px;font-weight:700;color:#7C3AED;text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px">🔝 TOP SECTION — Name → Price → Warranty → Buttons</div>
         <div class="fg2c">
           <div class="fg"><label>প্রোডাক্টের নাম *</label><input class="finp" id="pName" placeholder="সম্পূর্ণ নাম লিখুন"></div>
-          <div class="fg" id="catFieldGroup">
-            <label>ক্যাটাগরি * <button type="button" onclick="addCatRow()" style="margin-left:8px;background:#EFF6FF;color:#1D4ED8;border:1.5px solid #BFDBFE;border-radius:20px;padding:1px 10px;font-size:11px;font-weight:700;cursor:pointer">+ আরেকটি ক্যাটাগরি</button></label>
-            <div id="catRowsContainer" style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
-              <!-- dynamic rows injected by addCatRow() / populateCatDropdowns() -->
-            </div>
+          <div class="fg"><label>প্রোডাক্টের বাংলা নাম <span class="hint">(বাংলায় সার্চ করলে এই নাম দিয়েই মিলবে)</span></label><input class="finp" id="pNameBn" placeholder="যেমন: নিয়ন লাইট"></div>
+        </div>
+        <div class="fg" id="catFieldGroup" style="margin-top:12px">
+          <label>ক্যাটাগরি * <button type="button" onclick="addCatRow()" style="margin-left:8px;background:#EFF6FF;color:#1D4ED8;border:1.5px solid #BFDBFE;border-radius:20px;padding:1px 10px;font-size:11px;font-weight:700;cursor:pointer">+ আরেকটি ক্যাটাগরি</button></label>
+          <div id="catRowsContainer" style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+            <!-- dynamic rows injected by addCatRow() / populateCatDropdowns() -->
           </div>
         </div>
         <div class="fg3c">
@@ -2620,6 +2621,7 @@ async function syncAdminData(){
       sbProds.forEach(p => {
         if (defaultIds.has(p.id)) return;
         if (p.desc_text && !p.desc) p.desc = p.desc_text;
+        if (p.name_bn && !p.nameBn) p.nameBn = p.name_bn;
         adminProds.push(p);
       });
     }
@@ -4695,7 +4697,7 @@ async function saveCurrentOrder() {
 function openAddProd(){
   document.getElementById('prodModalTitle').textContent='প্রোডাক্ট যোগ করুন';
   document.getElementById('editId').value='';
-  ['pName','pPrice','pOld','pBadge','pWarranty','pDesc','pQuickSpecs','pLongDesc','pFeatures','pClosing','pFaqs','pTechSpecs'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
+  ['pName','pNameBn','pPrice','pOld','pBadge','pWarranty','pDesc','pQuickSpecs','pLongDesc','pFeatures','pClosing','pFaqs','pTechSpecs'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
   const dcEl=document.getElementById('pDiscountColor');if(dcEl)dcEl.value='';
   document.getElementById('pStock').value=0;
   document.getElementById('pRating').value=4.5;
@@ -4713,6 +4715,7 @@ function editProd(id){
   document.getElementById('prodModalTitle').textContent='প্রোডাক্ট এডিট করুন';
   document.getElementById('editId').value=id;
   document.getElementById('pName').value=p.name||'';
+  document.getElementById('pNameBn').value=p.nameBn||p.name_bn||'';
   initCatRows(p.cats || (p.cat ? [p.cat] : ['rgb'])); // ✅ Multi-cat support
   document.getElementById('pPrice').value=p.price||'';
   document.getElementById('pOld').value=p.old||'';
@@ -5064,6 +5067,7 @@ async function saveProd(){
   }
 
   const name=document.getElementById('pName').value.trim();
+  const nameBn=document.getElementById('pNameBn').value.trim();
   const price=parseInt(document.getElementById('pPrice').value);
   if(!name||!price){showAdminToast('❌ নাম ও মূল্য আবশ্যক');releaseSaveBtn();return;}
   const imgs=[...document.querySelectorAll('#imgMgr .img-url-input')].map(i=>i.value.trim()).filter(Boolean);
@@ -5112,6 +5116,7 @@ async function saveProd(){
   // Build full product object
   const data_obj={
     name,
+    nameBn,
     cats:getSelectedCats(),
     cat:getSelectedCats()[0]||'rgb', // backward compat: primary cat
     price,
@@ -5145,7 +5150,7 @@ async function saveProd(){
     if(eidNum){
       // Edit: existing product update
       const {data,error} = await supabaseClient.from('custom_products').update({
-        name:data_obj.name, price:data_obj.price, old:data_obj.old,
+        name:data_obj.name, name_bn:data_obj.nameBn, price:data_obj.price, old:data_obj.old,
         cat:data_obj.cat, cats:data_obj.cats, stock:data_obj.stock, warranty:data_obj.warranty,
         imgs:data_obj.imgs, specs:data_obj.specs,
         desc_text:data_obj.desc||data_obj.longDesc||'',
@@ -5160,7 +5165,7 @@ async function saveProd(){
     } else {
       // New: Supabase auto-generate করবে id (serial/bigserial)
       const {data,error} = await supabaseClient.from('custom_products').insert([{
-        name:data_obj.name, price:data_obj.price, old:data_obj.old,
+        name:data_obj.name, name_bn:data_obj.nameBn, price:data_obj.price, old:data_obj.old,
         cat:data_obj.cat, cats:data_obj.cats, stock:data_obj.stock, warranty:data_obj.warranty,
         imgs:data_obj.imgs, specs:data_obj.specs,
         desc_text:data_obj.desc||data_obj.longDesc||'',
