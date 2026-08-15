@@ -9,12 +9,14 @@
 //
 // ⚠️ SECURITY: এখানে শুধুই SUPABASE_ANON_KEY (public/anon key) পাঠানো
 // হচ্ছে। SUPABASE_SERVICE_ROLE_KEY কখনোই এই এন্ডপয়েন্ট থেকে বা কোনো
-// ব্রাউজার-facing কোড থেকে পাঠাবেন না।
+// ব্রাউজার-facing কোড থেকে পাঠাবেন না। GOOGLE_SHEET_URL-ও ইচ্ছাকৃতভাবে
+// এখানে নেই — সেটা শুধু api/sync-sheet.js-এর ভেতরেই থাকে, browser
+// কখনো সেই URL দেখে না (Google Sheets-এ পাঠানো POST request browser
+// থেকে সরাসরি না গিয়ে ওই proxy ফাংশনের মধ্য দিয়ে যায়)।
 
 export default function handler(req, res) {
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-  const googleSheetUrl = process.env.GOOGLE_SHEET_URL || "";
 
   if (!supabaseUrl || !supabaseAnonKey) {
     res.status(500).json({
@@ -28,6 +30,5 @@ export default function handler(req, res) {
   res.status(200).json({
     supabaseUrl,
     supabaseAnonKey,
-    googleSheetUrl,
   });
 }
