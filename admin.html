@@ -15,14 +15,15 @@
   // ============================================================
   //  ⚠️ SECURITY: এই ফাইলে কখনো Supabase URL/Key hardcode করবেন না।
   //  Browser-এ চলা কোড থেকে process.env সরাসরি অ্যাক্সেস করা যায় না,
-  //  তাই এই config Cloudflare Pages Function (/functions/api/config.js)
-  //  এর মাধ্যমে Cloudflare Pages Environment Variables থেকে রানটাইমে
+  //  তাই এই config Vercel Serverless Function (/api/config.js)
+  //  এর মাধ্যমে Vercel Environment Variables থেকে রানটাইমে
   //  fetch করা হচ্ছে। ওই ফাইলেই আসল process.env.SUPABASE_URL এবং
   //  process.env.SUPABASE_ANON_KEY রেফারেন্স করা আছে (server-side)।
+  //  Google Sheets sync আলাদাভাবে /api/sync-sheet প্রক্সির মাধ্যমে হয় —
+  //  আসল script.google.com URL browser কখনো দেখে না।
   // ============================================================
 
   let supabaseClient;
-  let GOOGLE_SHEET_URL = "";
 
   async function initSupabase() {
     let cfg;
@@ -31,23 +32,22 @@
       if (!res.ok) throw new Error('config fetch failed: ' + res.status);
       cfg = await res.json();
     } catch (e) {
-      console.error('❌ কনফিগ লোড করা যায়নি। /functions/api/config.js এবং Cloudflare Pages Environment Variables (SUPABASE_URL, SUPABASE_ANON_KEY) সেট করা আছে কিনা চেক করুন।', e);
+      console.error('❌ কনফিগ লোড করা যায়নি। /api/config.js এবং Vercel Environment Variables (SUPABASE_URL, SUPABASE_ANON_KEY) সেট করা আছে কিনা চেক করুন।', e);
       showAdminToast && showAdminToast('⚠️ Supabase কনফিগ লোড ব্যর্থ — env variables চেক করুন');
       return;
     }
 
     if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
-      console.error('❌ SUPABASE_URL / SUPABASE_ANON_KEY missing — Cloudflare Pages env variables সেট করুন।');
+      console.error('❌ SUPABASE_URL / SUPABASE_ANON_KEY missing — Vercel env variables সেট করুন।');
       return;
     }
-
-    GOOGLE_SHEET_URL = cfg.googleSheetUrl || "";
 
     // ✅ SAFE INIT: CDN load হয়েছে কিনা check করে তারপর client তৈরি
     // মোবাইল নেটওয়ার্কে CDN block হলে সাদা স্ক্রিন হবে না
     if (typeof supabase !== 'undefined') {
       const { createClient } = supabase;
       supabaseClient = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+
     } else {
       // CDN দুটোই fail হলে — dynamic fallback
       const s = document.createElement('script');
@@ -2704,7 +2704,7 @@ document.getElementById('lPass').addEventListener('keydown',e=>{if(e.key==='Ente
 
 // ✅ Page load এ Supabase-এর real session চেক — sessionStorage নয়
 (async function checkExistingSession(){
-  // প্রথমে runtime config (Cloudflare Pages env variables) থেকে Supabase client তৈরি করো
+  // প্রথমে runtime config (Vercel env variables) থেকে Supabase client তৈরি করো
   await initSupabase();
   if(!supabaseClient){
     // কনফিগ লোড ব্যর্থ হলে login screen-ই default থাকবে
@@ -4239,7 +4239,7 @@ async function setOrderStatus(id,status){
   // ⚠️ CORS FIX: 'text/plain' ব্যবহার — 'application/json' preflight (OPTIONS) error করে Google Script এ
   if(status==='confirmed'&&o){
     try{
-      fetch(GOOGLE_SHEET_URL,{
+      fetch('/api/sync-sheet',{
         method:'POST',
         headers:{'Content-Type':'text/plain'},
         body:JSON.stringify({
